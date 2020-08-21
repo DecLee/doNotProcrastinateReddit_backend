@@ -2,9 +2,9 @@ import express from 'express';
 import crypto from 'crypto';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-//import session from 'express-session';
+import session from 'express-session';
 import passport from 'passport';
-import session from 'cookie-session';
+//import cookieSession from 'cookie-session';
 import fetch from 'node-fetch';
 var RedditStrategy = require('passport-reddit').Strategy;
 require('dotenv').config();
@@ -27,9 +27,11 @@ passport.use(new RedditStrategy({
   passReqToCallback:true,
 },
 (req,accessToken, refreshToken, profile, done) => {
-  console.log("access token: ", accessToken);
+  console.log("access token#1: ", accessToken);
   console.log("refreshToken: ", refreshToken);
-  console.log("profile: ",profile);
+  //console.log("profile: ",profile);
+  //console.log(req.session);
+  //req.session.accessToken = accessToken;
   req.session.accessToken = accessToken;
 
   process.nextTick(function () {
@@ -46,8 +48,10 @@ const port = 3000;
 app.use(cors());
 app.use(bodyParser.urlencoded({extended: false }));
 app.use(session({
+  saveUninitialized: false,
+  name: 'session',
   secret: process.env.SUPER_SECRET,
-  cookie: {maxAge:3600000}
+  cookie: {maxAge: 60 * 60 * 1000}
 }))
 app.use(passport.initialize());
 app.use(passport.session());
@@ -55,56 +59,91 @@ app.use(passport.session());
 
 
 //routes
-app.get('/', (req, res) => {
+app.get('/', (req, res, next) => {
   res.send('The sedulous hyena ate the antelope!');
+  /*if(req.session.page_views){
+    req.session.page_views++;
+    res.send("You visited this page " + req.session.page_views + " times");
+ } else {
+    req.session.page_views = 1;
+    res.send("Welcome to this page for the first time!");
+ }*/
+ console.log("req.user: " + JSON.stringify(req.user));
+ console.log("isAuthenticated: " + req.isAuthenticated());
+ console.log("accessToken: " + req.session.accessToken);
+
 });
 
 app.get('/login', (req,res) => {
   res.send('please log in');
 });
 
+app.get('/test', (req,res) => {
+  res.send('please log in');
+  console.log("sessionState: " + req.session.passport.user);
+  console.log("accessToken api/v1/me: " + req.session.accessToken);
+});
+
+
 app.get('/auth/reddit', (req,res,next) => {
   req.session.state = crypto.randomBytes(32).toString('hex');
   passport.authenticate('reddit', {
     state: req.session.state,
+    scope: ['identity'],
   })(req,res,next);
   console.log("session state: " + req.session.state);
   console.log("sessionID: " + req.session.id);
+  //console.log("sessionReddit: " + req.session.passport.obj);
 });
 
 app.get('/auth/reddit/callback', function(req,res,next){
   console.log("query state: " + req.query.state);
   console.log("callback session state: " + req.session.state);
   console.log("callback sessionID: " + req.session.id);
+  //console.log("sessionUser: " + req.user);
+  console.log("isAuthenticated: " + req.isAuthenticated());
   //if(req.query.state == req.session.state){
     console.log("oauth2 works!!!");
     passport.authenticate('reddit',{
       successRedirect:'/',
       failureRedirect:'/login'
     })(req,res,next);
-  //}
-  /*else {
+  /*}
+  else {
     //console.log("query state: " + req.query.state);
     //console.log("callback session state: " + req.session.state);
     next( new Error('403'));
   }*/
 });
 
-app.get('/api/v1/me', passport.authenticate('reddit'),(req,res) => {
-  var oauthLink = 'https://oauth.reddit.com';
-  var request = new Request(oauthLink + '/api/v1/me', {
-    method:'GET',
+app.get('/api/v1/me', (req,res) => {
+  console.log("api/v1/me");
+  /*var oauthLink = "https://oauth.reddit.com";
+  var request = new Request(oauthLink + "/api/v1/me", {
+    method:"GET",
     headers: new Headers({
-      "Authorization": 'Bearer ' + req.session.accessToken,
-      "User-Agent": "DoNotProcrastinateForReddit/0.0.1 by u/UnknownSpark"
+      "Authorization": `bearer ` +req.session.accessToken,
+      //'User-Agent': `DoNotProcrastinateForReddit/0.0.1 by u/UnknownSpark`
     })
   });
-
+  console.log("request: " + request);
   fetch(request).then( (resObj) => {
     return resObj.json();
   }).then( (j) => {
     console.log(j);
-  });
+  });*/
+  fetch('https://oauth.reddit.com/api/v1/me', {
+    method: 'GET',
+    headers: {
+      "Authorization": 'bearer ' + req.session.accessToken,
+      "User-Agent": 'DoNotProcrastinateForReddit/0.0.1 by u/UnknownSpark'
+    },
+  })
+  .then(response => response.json())
+  .then(data => {
+    console.log(data)
+  })
+  res.redirect('/');
 });
 
 /*app.get('/logout', function(req,res){
