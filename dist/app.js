@@ -13,6 +13,8 @@ const passport_1 = __importDefault(require("passport"));
 const node_fetch_1 = __importDefault(require("node-fetch"));
 var RedditStrategy = require('passport-reddit').Strategy;
 require('dotenv').config();
+var userAgent = 'DoNotProcrastinateForReddit/0.0.1 by u/UnknownSpark';
+var oauthlink = 'https://oauth.reddit.com';
 passport_1.default.serializeUser((user, done) => {
     console.log("serial");
     done(null, user);
@@ -60,7 +62,7 @@ app.get('/', (req, res, next) => {
       req.session.page_views = 1;
       res.send("Welcome to this page for the first time!");
    }*/
-    console.log("req.user: " + JSON.stringify(req.user));
+    //console.log("req.user: " + JSON.stringify(req.user));
     console.log("isAuthenticated: " + req.isAuthenticated());
     console.log("accessToken: " + req.session.accessToken);
 });
@@ -76,7 +78,7 @@ app.get('/auth/reddit', (req, res, next) => {
     req.session.state = crypto_1.default.randomBytes(32).toString('hex');
     passport_1.default.authenticate('reddit', {
         state: req.session.state,
-        scope: ['identity'],
+        scope: ['identity', 'mysubreddits', 'read'],
     })(req, res, next);
     console.log("session state: " + req.session.state);
     console.log("sessionID: " + req.session.id);
@@ -121,12 +123,48 @@ app.get('/api/v1/me', (req, res) => {
         method: 'GET',
         headers: {
             "Authorization": 'bearer ' + req.session.accessToken,
-            "User-Agent": 'DoNotProcrastinateForReddit/0.0.1 by u/UnknownSpark'
+            "User-Agent": userAgent,
         },
     })
         .then(response => response.json())
         .then(data => {
-        console.log(data);
+        console.log(JSON.stringify(data, ['features', 'is_employee', 'is_email_permission_required'], '\t'));
+    });
+    res.redirect('/');
+});
+app.get('/subreddits/mine/subscriber', (req, res) => {
+    console.log("get subreddits of user");
+    node_fetch_1.default('https://oauth.reddit.com/subreddits/mine/subscriber', {
+        method: 'GET',
+        headers: {
+            "Authorization": 'bearer ' + req.session.accessToken,
+            "User-Agent": userAgent,
+        },
+    })
+        .then(response => response.json())
+        .then(responses => {
+        responses.forEach(response => {
+            console.log(response);
+        });
+    })
+        .then(data => {
+        console.log(JSON.stringify(data, ['data', 'display_name_prefixed', 'children'], '\t'));
+    })
+        .catch(() => console.log(`Error`));
+    res.redirect('/');
+});
+app.get('/user/subreddits/posts', (req, res) => {
+    console.log('Getting list of post from subscribed subreddits');
+    node_fetch_1.default(oauthlink + '/r/globaloffensive/hot', {
+        method: 'GET',
+        headers: {
+            "Authorization": 'bearer ' + req.session.accessToken,
+            "User-Agent": userAgent,
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+        console.log(JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail'], '\t'));
     });
     res.redirect('/');
 });
