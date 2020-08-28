@@ -65,6 +65,7 @@ app.get('/', (req, res, next) => {
     //console.log("req.user: " + JSON.stringify(req.user));
     console.log("isAuthenticated: " + req.isAuthenticated());
     console.log("accessToken: " + req.session.accessToken);
+    console.log("req: " + req);
 });
 app.get('/login', (req, res) => {
     res.send('please log in');
@@ -142,11 +143,6 @@ app.get('/subreddits/mine/subscriber', (req, res) => {
         },
     })
         .then(response => response.json())
-        .then(responses => {
-        responses.forEach(response => {
-            console.log(response);
-        });
-    })
         .then(data => {
         console.log(JSON.stringify(data, ['data', 'display_name_prefixed', 'children'], '\t'));
     })
@@ -165,6 +161,21 @@ app.get('/user/subreddits/posts', (req, res) => {
         .then(response => response.json())
         .then(data => {
         console.log(JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail'], '\t'));
+    });
+    res.redirect('/');
+});
+app.get('/r/:subreddit/:limit', (req, res) => {
+    console.log(JSON.stringify(req.params));
+    node_fetch_1.default(oauthlink + '/r/' + req.params.subreddit + '?limit=' + req.params.limit, {
+        method: 'GET',
+        headers: {
+            "Authorization": 'bearer ' + req.session.accessToken,
+            "User-Agent": userAgent,
+        },
+    })
+        .then(response => response.json())
+        .then(data => {
+        console.log(JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail', 'stickied'], '\t'));
     });
     res.redirect('/');
 });
