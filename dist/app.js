@@ -145,9 +145,10 @@ app.get('/subreddits/mine/subscriber', (req, res) => {
         .then(response => response.json())
         .then(data => {
         console.log(JSON.stringify(data, ['data', 'display_name_prefixed', 'children'], '\t'));
+        res.json(data);
     })
         .catch(() => console.log(`Error`));
-    res.redirect('/');
+    //res.redirect('/');
 });
 app.get('/user/subreddits/posts', (req, res) => {
     console.log('Getting list of post from subscribed subreddits');
@@ -161,8 +162,9 @@ app.get('/user/subreddits/posts', (req, res) => {
         .then(response => response.json())
         .then(data => {
         console.log(JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail'], '\t'));
+        res.json(data);
     });
-    res.redirect('/');
+    //res.redirect('/');
 });
 app.get('/r/:subreddit/:limit', (req, res) => {
     console.log(JSON.stringify(req.params));
@@ -176,8 +178,11 @@ app.get('/r/:subreddit/:limit', (req, res) => {
         .then(response => response.json())
         .then(data => {
         console.log(JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail', 'stickied'], '\t'));
+        var obj_data = JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail', 'stickied'], '\t');
+        obj_data = JSON.parse(obj_data);
+        res.json(obj_data);
     });
-    res.redirect('/');
+    //res.redirect('/');
 });
 /*app.get('/logout', function(req,res){
   req.logout();
