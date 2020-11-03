@@ -4,10 +4,21 @@ import cors from 'cors';
 import bodyParser from 'body-parser';
 import session from 'express-session';
 import passport from 'passport';
+
+import { v4 as uuidv4 } from 'uuid';
+import redis from 'redis';
+
 //import cookieSession from 'cookie-session';
 import fetch from 'node-fetch';
 var RedditStrategy = require('passport-reddit').Strategy;
 require('dotenv').config();
+
+let redisStore = require('connect-redis')(session)
+let redisClient = redis.createClient()
+
+redisClient.on('error', (err) => {
+  console.log('Redis error: ', err);
+});
 
 var userAgent = 'DoNotProcrastinateForReddit/0.0.1 by u/UnknownSpark';
 var oauthlink = 'https://oauth.reddit.com';
@@ -51,10 +62,15 @@ const port = 3000;
 app.use(cors());
 app.use(bodyParser.urlencoded({extended: false }));
 app.use(session({
-  saveUninitialized: false,
-  name: 'session',
-  secret: process.env.SUPER_SECRET,
-  cookie: {maxAge: 60 * 60 * 1000}
+  genid: (req) => {
+    return uuidv4()
+  },
+  store: new redisStore({ host: 'localhost', port: 6379, client: redisClient }),
+  name: '_redisDemo', 
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  cookie: { secure: false, maxAge: 60000 }, // Set to secure:false and expire in 1 minute for demo purposes
+  saveUninitialized: true
 }))
 app.use(passport.initialize());
 app.use(passport.session());

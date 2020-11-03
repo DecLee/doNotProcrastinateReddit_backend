@@ -9,10 +9,17 @@ const cors_1 = __importDefault(require("cors"));
 const body_parser_1 = __importDefault(require("body-parser"));
 const express_session_1 = __importDefault(require("express-session"));
 const passport_1 = __importDefault(require("passport"));
+const uuid_1 = require("uuid");
+const redis_1 = __importDefault(require("redis"));
 //import cookieSession from 'cookie-session';
 const node_fetch_1 = __importDefault(require("node-fetch"));
 var RedditStrategy = require('passport-reddit').Strategy;
 require('dotenv').config();
+let redisStore = require('connect-redis')(express_session_1.default);
+let redisClient = redis_1.default.createClient();
+redisClient.on('error', (err) => {
+    console.log('Redis error: ', err);
+});
 var userAgent = 'DoNotProcrastinateForReddit/0.0.1 by u/UnknownSpark';
 var oauthlink = 'https://oauth.reddit.com';
 passport_1.default.serializeUser((user, done) => {
@@ -45,10 +52,15 @@ const port = 3000;
 app.use(cors_1.default());
 app.use(body_parser_1.default.urlencoded({ extended: false }));
 app.use(express_session_1.default({
-    saveUninitialized: false,
-    name: 'session',
-    secret: process.env.SUPER_SECRET,
-    cookie: { maxAge: 60 * 60 * 1000 }
+    genid: (req) => {
+        return uuid_1.v4();
+    },
+    store: new redisStore({ host: 'localhost', port: 6379, client: redisClient }),
+    name: '_redisDemo',
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    cookie: { secure: false, maxAge: 60000 },
+    saveUninitialized: true
 }));
 app.use(passport_1.default.initialize());
 app.use(passport_1.default.session());
@@ -162,6 +174,8 @@ app.get('/user/subreddits/posts', (req, res) => {
         .then(response => response.json())
         .then(data => {
         console.log(JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail'], '\t'));
+        var obj_data = JSON.stringify(data, ['data', 'children', 'title', 'url', 'author', 'preview', 'images', 'source', 'resolution', 'thumbnail'], '\t');
+        obj_data = JSON.parse(obj_data);
         res.json(data);
     });
     //res.redirect('/');
